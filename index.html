@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مسابقة المعرفة العامة</title>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+/* ─── RESET & VARIABLES ─────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #0d0d1a;
+  --bg-card:   #131327;
+  --bg-panel:  #1a1a35;
+  --border:    #2a2a50;
+  --accent:    #e94560;
+  --accent2:   #0f3460;
+  --gold:      #f5a623;
+  --green:     #2ecc71;
+  --red:       #e74c3c;
+  --blue:      #3498db;
+  --purple:    #9b59b6;
+  --teal:      #1abc9c;
+  --text:      #eaeaea;
+  --muted:     #7a7a9a;
+  --easy:      #1a6985;
+  --hard:      #6b2d8b;
+  --used:      #252535;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  direction: rtl;
+  overflow-x: hidden;
+}
+
+/* ─── UTILITIES ─────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ─── SCROLLBAR ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── BUTTONS ────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 20px; border: none; border-radius: 10px;
+  cursor: pointer; font-size: 15px; font-weight: 700;
+  font-family: inherit; direction: rtl; transition: all .18s;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+.btn:disabled { opacity: .38; cursor: not-allowed; transform: none !important; }
+
+.btn-primary  { background: var(--accent);  color: #fff; }
+.btn-success  { background: var(--green);   color: #fff; }
+.btn-danger   { background: var(--red);     color: #fff; }
+.btn-warning  { background: var(--gold);    color: #111; }
+.btn-blue     { background: var(--blue);    color: #fff; }
+.btn-purple   { background: var(--purple);  color: #fff; }
+.btn-teal     { background: var(--teal);    color: #fff; }
+.btn-dark     { background: var(--bg-panel); color: var(--text); border: 1px solid var(--border); }
+.btn-lg       { padding: 14px 30px; font-size: 20px; border-radius: 12px; }
+.btn-xl       { padding: 18px 36px; font-size: 24px; border-radius: 14px; }
+.btn-sm       { padding: 6px 13px; font-size: 13px; border-radius: 8px; }
+.btn-block    { width: 100%; }
+
+/* ─── INPUTS ─────────────────────────────────────────── */
+.field {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text);
+  font-size: 15px; font-family: inherit; direction: rtl;
+  transition: border-color .2s;
+}
+.field:focus { outline: none; border-color: var(--gold); }
+
+/* ─── ANIMATIONS ──────────────────────────────────────── */
+@keyframes fadeUp   { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes popIn    { from { opacity:0; transform:scale(.93); }       to { opacity:1; transform:scale(1); } }
+@keyframes pulse    { 0%,100% { opacity:1; } 50% { opacity:.55; } }
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes flashGreen { 0% { background:rgba(46,204,113,.4); } 100% { background:var(--bg-panel); } }
+@keyframes flashRed   { 0% { background:rgba(231,76,60,.4);  } 100% { background:var(--bg-panel); } }
+@keyframes timerBeat  { 0%,100% { transform:scale(1); }  50% { transform:scale(1.07); } }
+
+/* ════════════════════════════════════════════════════════
+   SETUP SCREEN
+════════════════════════════════════════════════════════ */
+#setup-screen {
+  min-height: 100vh; padding: 30px 20px;
+  max-width: 880px; margin: 0 auto;
+}
+
+.setup-title {
+  text-align: center; font-size: 3rem; color: var(--gold);
+  text-shadow: 0 0 40px rgba(245,166,35,.4);
+  margin-bottom: 6px;
+}
+.setup-sub { text-align: center; color: var(--muted); font-size: 1.1rem; margin-bottom: 36px; }
+
+.card {
+  background: var(--bg-card); border-radius: 16px;
+  padding: 22px 24px; margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+.card-title {
+  font-size: 1.2rem; color: var(--gold); font-weight: 700;
+  padding-bottom: 12px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Team rows */
+.team-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 10px; animation: fadeUp .25s ease;
+}
+.team-dot { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+
+/* Settings grid */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.setting-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+/* Loading */
+#load-status {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1rem; padding: 12px 0; color: var(--gold);
+}
+.spinner {
+  width: 22px; height: 22px; border: 3px solid rgba(245,166,35,.25);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin .75s linear infinite; flex-shrink: 0;
+}
+.status-ok  { color: var(--green); font-weight: 700; }
+.status-err { color: var(--red);   font-weight: 700; }
+
+/* ════════════════════════════════════════════════════════
+   GAME SCREEN SHELL
+════════════════════════════════════════════════════════ */
+#game-screen {
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+
+/* ─── TOP BAR ─────────────────────────────────────────── */
+#top-bar {
+  background: var(--bg-card); border-bottom: 2px solid var(--accent);
+  padding: 8px 16px; display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0; gap: 12px;
+}
+#top-bar-title { font-size: 1.4rem; color: var(--gold); white-space: nowrap; font-weight: 800; }
+
+#timer-wrap { display: flex; flex-direction: column; align-items: center; }
+#timer-display {
+  font-size: 3.6rem; font-weight: 900; color: var(--gold);
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 20px rgba(245,166,35,.5);
+  line-height: 1; min-width: 120px; text-align: center;
+}
+#timer-display.urgent {
+  color: var(--red); text-shadow: 0 0 20px rgba(231,76,60,.7);
+  animation: timerBeat .45s ease infinite;
+}
+.timer-btns { display: flex; gap: 5px; margin-top: 4px; }
+
+.top-right { display: flex; gap: 8px; align-items: center; }
+
+/* ─── GAME LAYOUT ─────────────────────────────────────── */
+#game-layout {
+  display: grid;
+  grid-template-columns: 270px 1fr 290px;
+  flex: 1; overflow: hidden;
+}
+
+/* ════════════════════════════════════════════════════════
+   LEFT — SCOREBOARD
+════════════════════════════════════════════════════════ */
+#scoreboard-panel {
+  background: var(--bg-card); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#scoreboard-panel > h2 {
+  padding: 12px 16px; font-size: 1rem; color: var(--gold);
+  border-bottom: 1px solid var(--border); text-align: center; flex-shrink: 0;
+}
+#teams-list { flex: 1; overflow-y: auto; padding: 10px; }
+
+.team-card {
+  background: var(--bg-panel); border-radius: 12px;
+  padding: 11px 13px; margin-bottom: 9px;
+  border: 2px solid transparent; cursor: pointer;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.team-card:hover { border-color: var(--border); }
+.team-card.active { box-shadow: 0 0 18px rgba(245,166,35,.25); }
+.team-turn-badge {
+  position: absolute; top: 7px; left: 8px;
+  background: var(--gold); color: #111;
+  font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px;
+}
+.team-name-label { font-size: 1.05rem; font-weight: 800; margin-bottom: 4px; }
+.team-score-label { font-size: 2rem; font-weight: 900; color: var(--gold); line-height: 1; }
+.team-score-btns { display: flex; gap: 5px; margin-top: 8px; }
+.team-score-btns .btn { flex: 1; padding: 5px 4px; font-size: 18px; }
+
+.team-card.flash-up   { animation: flashGreen .55s ease; }
+.team-card.flash-down { animation: flashRed   .55s ease; }
+
+#sb-footer {
+  padding: 10px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 7px; flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   CENTER — QUESTION DISPLAY
+════════════════════════════════════════════════════════ */
+#center-panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg);
+}
+
+#question-display {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+
+#empty-state {
+  text-align: center; color: var(--muted);
+}
+#empty-state .empty-icon { font-size: 4rem; margin-bottom: 14px; }
+#empty-state p { font-size: 1.2rem; }
+
+#q-content { width: 100%; max-width: 780px; animation: popIn .35s ease; }
+
+.q-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+
+.badge {
+  padding: 3px 13px; border-radius: 20px; font-size: 12px; font-weight: 700;
+}
+.badge-num  { background: var(--accent2); color: #fff; }
+.badge-easy { background: var(--easy); color: #fff; }
+.badge-hard { background: var(--hard); color: #fff; }
+.badge-cat  { background: var(--bg-panel); color: var(--gold); border: 1px solid var(--gold); }
+.badge-list { background: #1d6348; color: #fff; }
+
+#q-text {
+  font-size: 2.1rem; font-weight: 800; line-height: 1.55;
+  text-align: center; color: #fff; margin-bottom: 24px;
+}
+
+#options-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 22px; width: 100%;
+  animation: fadeUp .3s ease;
+}
+.opt-card {
+  background: var(--bg-panel); border: 2px solid var(--border);
+  border-radius: 13px; padding: 15px 18px;
+  font-size: 1.25rem; display: flex; align-items: center; gap: 12px;
+  transition: border-color .25s, background .25s;
+}
+.opt-card.correct { border-color: var(--green); background: rgba(46,204,113,.12); }
+.opt-card.wrong   { border-color: var(--red);   background: rgba(231,76,60,.12);  }
+.opt-letter {
+  background: var(--accent2); color: #fff;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 1rem; flex-shrink: 0;
+}
+
+#answer-reveal-box {
+  background: rgba(46,204,113,.12); border: 2px solid var(--green);
+  border-radius: 12px; padding: 11px 18px;
+  font-size: 1.3rem; font-weight: 800; color: var(--green);
+  text-align: center; margin-bottom: 14px; animation: popIn .3s ease;
+}
+
+/* ─── CONTROL PANEL ──────────────────────────────────── */
+#ctrl-panel {
+  background: var(--bg-card); border-top: 1px solid var(--border);
+  padding: 13px 18px; flex-shrink: 0;
+}
+
+.ctrl-row {
+  display: flex; gap: 9px; flex-wrap: wrap;
+  align-items: center; justify-content: center; margin-bottom: 9px;
+}
+.ctrl-row:last-child { margin-bottom: 0; }
+
+.steal-banner {
+  width: 100%; text-align: center;
+  background: rgba(233,69,96,.12); border: 2px solid var(--accent);
+  border-radius: 10px; padding: 8px 14px;
+  color: var(--accent); font-weight: 800; font-size: 1.05rem;
+  animation: pulse 1.8s infinite; margin-bottom: 9px;
+}
+
+.team-pills { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
+.team-pill {
+  padding: 7px 16px; border-radius: 20px;
+  border: 2px solid var(--border); background: var(--bg-panel);
+  color: var(--text); cursor: pointer; font-size: 13px;
+  font-family: inherit; font-weight: 700; transition: all .18s;
+}
+.team-pill:hover { border-color: var(--gold); }
+.team-pill.selected { border-color: var(--gold); background: rgba(245,166,35,.15); }
+.team-pill.steal-sel { border-color: var(--accent); background: rgba(233,69,96,.15); }
+
+.ctrl-label {
+  width: 100%; text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 5px;
+}
+
+/* ════════════════════════════════════════════════════════
+   RIGHT — GRID + LIST
+════════════════════════════════════════════════════════ */
+#right-panel {
+  background: var(--bg-card); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.tab-bar { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab-btn {
+  flex: 1; padding: 11px 5px;
+  background: transparent; border: none; color: var(--muted);
+  cursor: pointer; font-size: 13px; font-weight: 700;
+  font-family: inherit; border-bottom: 3px solid transparent;
+  transition: all .2s;
+}
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.tab-pane { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.tab-pane.active { display: flex; }
+
+/* MCQ grid */
+#grid-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+
+#q-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+}
+.g-btn {
+  aspect-ratio: 1; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 10px; font-weight: 800; color: #fff; font-family: inherit;
+  transition: all .15s;
+}
+.g-btn.easy { background: var(--easy); }
+.g-btn.hard { background: var(--hard); }
+.g-btn.used { background: var(--used); color: #3a3a55; cursor: default; text-decoration: line-through; }
+.g-btn.current { outline: 2px solid var(--gold); outline-offset: 1px; }
+.g-btn:not(.used):hover { filter: brightness(1.4); transform: scale(1.15); z-index: 1; }
+
+#manual-row {
+  padding: 9px 10px; border-top: 1px solid var(--border);
+  display: flex; gap: 7px; flex-shrink: 0;
+}
+#manual-input {
+  flex: 1; padding: 7px 10px;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  font-family: inherit; text-align: center;
+}
+#manual-input:focus { outline: none; border-color: var(--gold); }
+
+/* Grid legend */
+.grid-legend {
+  display: flex; gap: 10px; padding: 6px 10px 2px;
+  flex-shrink: 0; font-size: 11px; color: var(--muted);
+}
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-left: 4px; }
+
+/* List questions */
+#list-scroll { flex: 1; overflow-y: auto; padding: 10px; }
+
+.lq-card {
+  background: var(--bg-panel); border-radius: 10px;
+  padding: 11px 13px; margin-bottom: 8px;
+  border: 2px solid transparent; cursor: pointer; transition: all .2s;
+}
+.lq-card:hover { border-color: var(--blue); }
+.lq-card.active { border-color: var(--gold); background: rgba(245,166,35,.08); }
+.lq-card.used { opacity: .35; pointer-events: none; }
+.lq-num { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.lq-text { font-size: 13px; font-weight: 700; line-height: 1.45; }
+
+/* List award panel in center */
+#list-winner-row {
+  display: flex; gap: 9px; align-items: center; flex-wrap: wrap; justify-content: center;
+}
+#list-pts-input {
+  width: 72px; padding: 8px; text-align: center;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text); font-size: 18px; font-family: inherit;
+}
+
+/* ─── NOTIFICATION ────────────────────────────────────── */
+#notif {
+  position: fixed; top: 18px; left: 50%;
+  transform: translateX(-50%) translateY(-120px);
+  background: var(--bg-card); border-radius: 12px;
+  padding: 13px 26px; font-size: 1.1rem; font-weight: 700;
+  z-index: 9999; transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  border: 2px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  text-align: center; pointer-events: none;
+}
+#notif.show           { transform: translateX(-50%) translateY(0); }
+#notif.n-success      { border-color: var(--green); color: var(--green); }
+#notif.n-error        { border-color: var(--red);   color: var(--red); }
+#notif.n-info         { border-color: var(--gold);  color: var(--gold); }
+
+/* ─── MISC ───────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+select option { background: var(--bg-panel); }
+
+/* ─── FILE DROP ZONE ─────────────────────────────────── */
+#drop-zone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px dashed var(--border); border-radius: 14px;
+  padding: 28px 20px; cursor: pointer; transition: all .2s;
+  text-align: center; margin-bottom: 14px;
+}
+#drop-zone:hover, #drop-zone.drag-over {
+  border-color: var(--gold); background: rgba(245,166,35,.06);
+}
+.drop-icon  { font-size: 2.8rem; margin-bottom: 10px; }
+.drop-title { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+.drop-sub   { font-size: 12px; color: var(--muted); }
+
+.or-divider {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.or-divider::before, .or-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.or-divider span { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════
+     SETUP SCREEN
+════════════════════════════════════════════════════ -->
+<div id="setup-screen">
+  <h1 class="setup-title">🎯 مسابقة المعرفة العامة</h1>
+  <p class="setup-sub">أعِدَّ اللعبة ثم ابدأ</p>
+
+  <!-- File loader card -->
+  <div class="card">
+    <div class="card-title">📂 تحميل الأسئلة</div>
+
+    <label id="drop-zone" for="xlsx-input">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">اسحب ملف Excel هنا أو اضغط للاختيار</div>
+      <div class="drop-sub">questions.xlsx أو أي ملف Excel آخر</div>
+      <input type="file" id="xlsx-input" accept=".xlsx,.xls" style="display:none" onchange="handleFileInput(this)">
+    </label>
+
+    <div class="or-divider"><span>أو</span></div>
+
+    <button class="btn btn-dark btn-block btn-sm" onclick="loadFromGSheets()">
+      ☁️ تحميل من Google Sheets (يتطلب إنترنت)
+    </button>
+
+    <div id="load-status" class="hidden" style="margin-top:14px;display:flex;align-items:center;gap:10px;">
+      <div class="spinner" id="load-spinner" style="display:none"></div>
+      <span id="load-msg"></span>
+    </div>
+  </div>
+
+  <!-- Teams -->
+  <div class="card">
+    <div class="card-title">👥 الفرق</div>
+    <div id="teams-setup"></div>
+    <button class="btn btn-dark btn-block" style="margin-top:8px" onclick="addTeamRow()">＋ إضافة فريق</button>
+  </div>
+
+  <!-- Settings -->
+  <div class="card">
+    <div class="card-title">⚙️ الإعدادات</div>
+    <div class="settings-grid">
+      <div>
+        <label class="setting-label">نقاط الإجابة بدون خيارات</label>
+        <input class="field" type="number" id="cfg-no-opt" value="2" min="0" max="99">
+      </div>
+      <div>
+        <label class="setting-label">نقاط الإجابة بالخيارات</label>
+        <input class="field" type="number" id="cfg-with-opt" value="1" min="0" max="99">
+      </div>
+      <div>
+        <label class="setting-label">نقاط السرقة</label>
+        <input class="field" type="number" id="cfg-steal" value="1" min="0" max="99">
+      </div>
+      <div>
+        <label class="setting-label">مدة العداد</label>
+        <select class="field" id="cfg-timer">
+          <option value="5">5 ثواني</option>
+          <option value="10">10 ثواني</option>
+          <option value="15">15 ثانية</option>
+          <option value="20">20 ثانية</option>
+          <option value="25">25 ثانية</option>
+          <option value="30" selected>30 ثانية</option>
+          <option value="45">45 ثانية</option>
+          <option value="60">دقيقة</option>
+          <option value="90">دقيقة ونصف</option>
+          <option value="120">دقيقتان</option>
+          <option value="180">3 دقائق</option>
+          <option value="300">5 دقائق</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-xl btn-block" id="start-btn" disabled onclick="startGame()">
+    ▶ ابدأ اللعبة
+  </button>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     GAME SCREEN
+════════════════════════════════════════════════════ -->
+<div id="game-screen" class="hidden">
+
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <span id="top-bar-title">🎯 مسابقة المعرفة</span>
+
+    <div id="timer-wrap">
+      <div id="timer-display">00:30</div>
+      <div class="timer-btns">
+        <button class="btn btn-warning btn-sm" onclick="timerStart()">▶</button>
+        <button class="btn btn-dark btn-sm" onclick="timerPause()">⏸</button>
+        <button class="btn btn-dark btn-sm" onclick="timerReset()">↺</button>
+        <select id="timer-quick" onchange="changeTimerDuration(this.value)"
+          style="background:var(--bg-panel);border:1px solid var(--border);color:var(--text);
+                 border-radius:7px;padding:4px 6px;font-size:12px;font-family:inherit;cursor:pointer;">
+          <option value="5">5ث</option>
+          <option value="10">10ث</option>
+          <option value="15">15ث</option>
+          <option value="20">20ث</option>
+          <option value="25">25ث</option>
+          <option value="30" selected>30ث</option>
+          <option value="45">45ث</option>
+          <option value="60">1د</option>
+          <option value="90">1:30</option>
+          <option value="120">2د</option>
+          <option value="180">3د</option>
+          <option value="300">5د</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="top-right">
+      <button class="btn btn-dark btn-sm" onclick="toggleFS()">⛶ شاشة كاملة</button>
+      <button class="btn btn-dark btn-sm" onclick="goSetup()">⚙ إعدادات</button>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div id="game-layout">
+
+    <!-- LEFT: SCOREBOARD -->
+    <div id="scoreboard-panel">
+      <h2>🏆 لوحة النتائج</h2>
+      <div id="teams-list"></div>
+      <div id="sb-footer">
+        <button class="btn btn-blue btn-block" onclick="nextTeam()">▶ الفريق التالي</button>
+        <button class="btn btn-dark btn-block btn-sm" onclick="resetScores()">إعادة تعيين النقاط</button>
+      </div>
+    </div>
+
+    <!-- CENTER: QUESTION -->
+    <div id="center-panel">
+      <div id="question-display">
+        <div id="empty-state">
+          <div class="empty-icon">❓</div>
+          <p>اختر سؤالاً من الشبكة أو قائمة الأسئلة</p>
+        </div>
+        <div id="q-content" class="hidden">
+          <div class="q-meta" id="q-meta"></div>
+          <div id="q-text"></div>
+          <div id="options-grid" class="hidden"></div>
+          <div id="answer-reveal-box" class="hidden"></div>
+        </div>
+      </div>
+
+      <!-- CONTROL PANEL -->
+      <div id="ctrl-panel">
+        <div id="ctrl-inner">
+          <div style="text-align:center;color:var(--muted);font-size:13px">لا يوجد سؤال محدد</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TABS -->
+    <div id="right-panel">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('mcq')" id="tab-mcq-btn">أسئلة MCQ</button>
+        <button class="tab-btn" onclick="switchTab('list')" id="tab-list-btn">القائمة</button>
+      </div>
+
+      <!-- MCQ TAB -->
+      <div class="tab-pane active" id="tab-mcq">
+        <div class="grid-legend">
+          <span><span class="legend-dot" style="background:var(--easy)"></span>سهل</span>
+          <span><span class="legend-dot" style="background:var(--hard)"></span>صعب</span>
+          <span><span class="legend-dot" style="background:var(--used)"></span>مستخدم</span>
+        </div>
+        <div id="grid-scroll"><div id="q-grid"></div></div>
+        <div id="manual-row">
+          <input type="number" id="manual-input" class="" placeholder="رقم السؤال…" min="1">
+          <button class="btn btn-dark btn-sm" onclick="loadManual()">تحميل</button>
+        </div>
+      </div>
+
+      <!-- LIST TAB -->
+      <div class="tab-pane" id="tab-list">
+        <div id="list-scroll"></div>
+      </div>
+    </div>
+
+  </div><!-- /game-layout -->
+</div><!-- /game-screen -->
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─── CONFIG ──────────────────────────────────────────── */
+const SHEET_ID   = '1oNSL4-2h5q-PyHomUH15_nG4VjXtLK2wYjimfOr-MxE';
+const MCQ_SHEET  = 'Sheet1';
+const LIST_SHEET = 'Sheet2';
+
+/* ─── JSONP FETCH (works from local file://) ──────────── */
+function fetchSheetJsonp(sheetName) {
+  return new Promise((resolve, reject) => {
+    const cb  = '_gviz_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`
+              + `?tqx=out:json&callback=${cb}&sheet=${encodeURIComponent(sheetName)}`;
+
+    window[cb] = function(data) {
+      try { delete window[cb]; } catch(_) {}
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data.table);
+    };
+
+    const script    = document.createElement('script');
+    script.src      = url;
+    script.onerror  = () => {
+      try { delete window[cb]; } catch(_) {}
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error('تعذّر تحميل البيانات — تحقق من اتصالك بالإنترنت'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+const TEAM_COLORS = [
+  '#e94560','#3498db','#2ecc71','#f5a623',
+  '#9b59b6','#1abc9c','#e67e22','#ff6b9d'
+];
+
+/* ─── STATE ───────────────────────────────────────────── */
+const S = {
+  teams:      [],          // [{name, score, color}]
+  mcq:        [],          // loaded MCQ questions
+  list:       [],          // loaded LIST questions
+  usedMcq:    new Set(),
+  usedList:   new Set(),
+
+  curQ:       null,        // current question object
+  curType:    null,        // 'mcq' | 'list'
+  phase:      null,        // see PHASES below
+  /*
+    PHASES:
+      null           – no question
+      'mcq-init'     – MCQ loaded, choose mode
+      'mcq-no-opt'   – answering without options
+      'mcq-with-opt' – answering with options
+      'mcq-steal'    – steal opportunity
+      'list'         – list question
+  */
+  answerTeam: null,        // index of team answering
+  stealTeam:  null,        // index of team stealing
+  curTeam:    0,           // whose turn (highlighted)
+
+  cfg: {
+    noOpt: 2, withOpt: 1, steal: 1, timerSec: 30
+  },
+
+  timerVal:     30,
+  timerRunning: false,
+  timerTick:    null,
+};
+
+/* ════════════════════════════════════════════════════════
+   AUDIO (Web Audio API — no files needed)
+════════════════════════════════════════════════════════ */
+let _ac = null;
+function ac() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  return _ac;
+}
+
+function playCorrect() {
+  try {
+    const ctx = ac();
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = f;
+      const t = ctx.currentTime + i * 0.13;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.32, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+      o.start(t); o.stop(t + 0.45);
+    });
+  } catch (_) {}
+}
+
+function playWrong() {
+  try {
+    const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(230, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.65);
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.68);
+  } catch (_) {}
+}
+
+/* ════════════════════════════════════════════════════════
+   DATA FETCHING
+════════════════════════════════════════════════════════ */
+function cellVal(row, i) {
+  if (!row.c || !row.c[i] || row.c[i].v == null) return '';
+  return String(row.c[i].v).trim();
+}
+
+async function loadAllQuestions() {
+  // MCQ — Sheet1
+  const mcqTable = await fetchSheetJsonp(MCQ_SHEET);
+  S.mcq = [];
+  if (mcqTable?.rows) {
+    for (const row of mcqTable.rows) {
+      const num = parseInt(cellVal(row, 0));
+      if (!num || isNaN(num)) continue;
+      S.mcq.push({
+        num,
+        diff:   cellVal(row, 1),   // 'س' easy | 'ص' hard
+        cat:    cellVal(row, 2),
+        q:      cellVal(row, 3),
+        optA:   cellVal(row, 4),
+        optB:   cellVal(row, 5),
+        optC:   cellVal(row, 6),
+        optD:   cellVal(row, 7),
+        answer: cellVal(row, 8),   // 'أ'|'ب'|'ج'|'د'
+      });
+    }
+  }
+
+  // LIST — Sheet2
+  const lstTable = await fetchSheetJsonp(LIST_SHEET);
+  S.list = [];
+  if (lstTable?.rows) {
+    for (const row of lstTable.rows) {
+      const num = parseInt(cellVal(row, 0));
+      if (!num || isNaN(num)) continue;
+      const b = cellVal(row, 1);
+      const c = cellVal(row, 2);
+      // Handle rows where question text may be in col B (data entry quirk)
+      const question = c.length > 2 ? c : (b.length > 2 ? b : c);
+      const category = c.length > 2 ? b : '';
+      S.list.push({ num, cat: category, q: question });
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   SETUP SCREEN
+════════════════════════════════════════════════════════ */
+let _teamCtr = 0;
+const DEFAULTS = ['الفريق الأول','الفريق الثاني','الفريق الثالث'];
+
+function addTeamRow(name = '') {
+  _teamCtr++;
+  const colorIdx = document.querySelectorAll('.team-row').length % TEAM_COLORS.length;
+  const color     = TEAM_COLORS[colorIdx];
+  const id        = `ti-${_teamCtr}`;
+  const wrap      = document.createElement('div');
+  wrap.className  = 'team-row';
+  wrap.id         = `tr-${_teamCtr}`;
+  wrap.innerHTML  = `
+    <div class="team-dot" style="background:${color}"></div>
+    <input class="field" id="${id}" value="${esc(name)}" placeholder="اسم الفريق…" maxlength="30" style="flex:1">
+    <button class="btn btn-danger btn-sm" onclick="this.closest('.team-row').remove()">✕</button>
+  `;
+  document.getElementById('teams-setup').appendChild(wrap);
+}
+
+// Auto-init on page load
+DEFAULTS.forEach(n => addTeamRow(n));
+
+/* ════════════════════════════════════════════════════════
+   FILE LOADING (Excel)
+════════════════════════════════════════════════════════ */
+function handleFileInput(input) {
+  const file = input.files[0];
+  if (file) parseExcelFile(file);
+}
+
+// Core parser — accepts an ArrayBuffer (used by both file picker & auto-load)
+async function parseExcelBuffer(buf) {
+  const wb = XLSX.read(buf, { type: 'array' });
+
+  // ── MCQ sheet ────────────────────────────────────────
+  const mcqName = wb.SheetNames.find(n => n === MCQ_SHEET) || wb.SheetNames[0];
+  const mcqRows = XLSX.utils.sheet_to_json(wb.Sheets[mcqName], { header: 1, defval: '' });
+  S.mcq = [];
+  for (let i = 1; i < mcqRows.length; i++) {
+    const r   = mcqRows[i];
+    const num = parseInt(r[0]);
+    if (!num || isNaN(num)) continue;
+    S.mcq.push({
+      num,
+      diff:   String(r[1] || '').trim(),
+      cat:    String(r[2] || '').trim(),
+      q:      String(r[3] || '').trim(),
+      optA:   String(r[4] || '').trim(),
+      optB:   String(r[5] || '').trim(),
+      optC:   String(r[6] || '').trim(),
+      optD:   String(r[7] || '').trim(),
+      answer: String(r[8] || '').trim(),
+    });
+  }
+
+  // ── LIST sheet ───────────────────────────────────────
+  const lstName = wb.SheetNames.find(n => n === LIST_SHEET) || wb.SheetNames[1];
+  const lstRows = XLSX.utils.sheet_to_json(wb.Sheets[lstName], { header: 1, defval: '' });
+  S.list = [];
+  for (let i = 1; i < lstRows.length; i++) {
+    const r   = lstRows[i];
+    const num = parseInt(r[0]);
+    if (!num || isNaN(num)) continue;
+    const b = String(r[1] || '').trim();
+    const c = String(r[2] || '').trim();
+    const question = c.length > 2 ? c : (b.length > 2 ? b : c);
+    const category = c.length > 2 ? b : '';
+    S.list.push({ num, cat: category, q: question });
+  }
+
+  setLoadStatus('ok', `✓ تم تحميل ${S.mcq.length} سؤال MCQ و ${S.list.length} سؤال قائمة`);
+  document.getElementById('start-btn').disabled = false;
+}
+
+// File-picker path
+async function parseExcelFile(file) {
+  setLoadStatus('loading', 'جارٍ قراءة الملف…');
+  try {
+    await parseExcelBuffer(await file.arrayBuffer());
+  } catch (e) {
+    setLoadStatus('err', `✗ خطأ في قراءة الملف: ${e.message}`);
+  }
+}
+
+// Google Sheets fallback
+async function loadFromGSheets() {
+  setLoadStatus('loading', 'جارٍ التحميل من Google Sheets…');
+  try {
+    await loadAllQuestions();
+    setLoadStatus('ok', `✓ تم تحميل ${S.mcq.length} سؤال MCQ و ${S.list.length} سؤال قائمة`);
+    document.getElementById('start-btn').disabled = false;
+  } catch (e) {
+    setLoadStatus('err', `✗ خطأ: ${e.message}`);
+  }
+}
+
+// ── Auto-load questions.xlsx when served from a web server (Netlify) ──
+(async function autoLoad() {
+  try {
+    const res = await fetch('./questions.xlsx');
+    if (!res.ok) return; // not found — user will use the file picker
+    setLoadStatus('loading', 'جارٍ تحميل الأسئلة تلقائياً…');
+    await parseExcelBuffer(await res.arrayBuffer());
+  } catch (_) {
+    // Running locally as file:// — silently show the picker
+  }
+})();
+
+// ── Drag-and-drop ────────────────────────────────────────
+(function () {
+  const zone = document.getElementById('drop-zone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) parseExcelFile(file);
+  });
+})();
+
+function setLoadStatus(type, msg) {
+  const wrap = document.getElementById('load-status');
+  const sp   = document.getElementById('load-spinner');
+  const txt  = document.getElementById('load-msg');
+  wrap.classList.remove('hidden');
+  sp.style.display  = type === 'loading' ? 'block' : 'none';
+  txt.textContent   = msg;
+  txt.className     = type === 'ok' ? 'status-ok' : type === 'err' ? 'status-err' : '';
+}
+
+function startGame() {
+  // Gather teams
+  const inputs = document.querySelectorAll('#teams-setup .team-row');
+  S.teams = [];
+  inputs.forEach((row, i) => {
+    const inp  = row.querySelector('input');
+    const name = inp ? inp.value.trim() : '';
+    if (name) {
+      S.teams.push({ name, score: 0, color: TEAM_COLORS[S.teams.length % TEAM_COLORS.length] });
+    }
+  });
+  if (S.teams.length === 0) { notify('أضف فريقاً واحداً على الأقل!', 'error'); return; }
+
+  // Config
+  S.cfg.noOpt    = Math.max(0, parseInt(document.getElementById('cfg-no-opt').value)   || 2);
+  S.cfg.withOpt  = Math.max(0, parseInt(document.getElementById('cfg-with-opt').value) || 1);
+  S.cfg.steal    = Math.max(0, parseInt(document.getElementById('cfg-steal').value)    || 1);
+  S.cfg.timerSec = parseInt(document.getElementById('cfg-timer').value) || 30;
+  S.timerVal     = S.cfg.timerSec;
+  S.curTeam      = 0;
+
+  // Switch screens
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+
+  renderScoreboard();
+  buildGrid();
+  buildList();
+  renderTimer();
+  renderCtrl();
+  // Sync in-game timer dropdown to configured duration
+  const tq = document.getElementById('timer-quick');
+  if (tq) tq.value = String(S.cfg.timerSec);
+}
+
+function goSetup() {
+  timerPause();
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('setup-screen').classList.remove('hidden');
+}
+
+/* ════════════════════════════════════════════════════════
+   SCOREBOARD
+════════════════════════════════════════════════════════ */
+function renderScoreboard() {
+  const el = document.getElementById('teams-list');
+  el.innerHTML = '';
+  S.teams.forEach((t, i) => {
+    const active = i === S.curTeam;
+    const div    = document.createElement('div');
+    div.className = 'team-card' + (active ? ' active' : '');
+    div.id        = `tc-${i}`;
+    div.style.borderColor = active ? t.color : 'transparent';
+    div.onclick   = () => { S.curTeam = i; S.answerTeam = i; renderScoreboard(); renderCtrl(); };
+    div.innerHTML = `
+      ${active ? '<div class="team-turn-badge">الدور</div>' : ''}
+      <div class="team-name-label" style="color:${t.color}">${esc(t.name)}</div>
+      <div class="team-score-label">${t.score}</div>
+      <div class="team-score-btns">
+        <button class="btn btn-success" onclick="event.stopPropagation();addPts(${i},1)">＋</button>
+        <button class="btn btn-danger"  onclick="event.stopPropagation();addPts(${i},-1)">－</button>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function addPts(idx, delta) {
+  S.teams[idx].score = Math.max(0, S.teams[idx].score + delta);
+  const card = document.getElementById(`tc-${idx}`);
+  if (card) {
+    card.classList.remove('flash-up', 'flash-down');
+    void card.offsetWidth; // reflow
+    card.classList.add(delta >= 0 ? 'flash-up' : 'flash-down');
+  }
+  renderScoreboard();
+}
+
+function award(idx, pts, msg) {
+  addPts(idx, pts);
+  notify(`＋${pts} نقطة → ${esc(S.teams[idx].name)}`, 'success');
+}
+
+function nextTeam() {
+  S.curTeam     = (S.curTeam + 1) % S.teams.length;
+  S.answerTeam  = S.curTeam;
+  renderScoreboard();
+  renderCtrl();
+}
+
+function resetScores() {
+  if (!confirm('إعادة تعيين جميع النقاط؟')) return;
+  S.teams.forEach(t => t.score = 0);
+  renderScoreboard();
+}
+
+/* ════════════════════════════════════════════════════════
+   QUESTION GRID (MCQ)
+════════════════════════════════════════════════════════ */
+function buildGrid() {
+  const grid = document.getElementById('q-grid');
+  grid.innerHTML = '';
+  const sorted = [...S.mcq].sort((a, b) => a.num - b.num);
+  sorted.forEach(q => {
+    const btn    = document.createElement('button');
+    const used   = S.usedMcq.has(q.num);
+    const cur    = S.curQ?.num === q.num && S.curType === 'mcq';
+    btn.className = `g-btn ${q.diff === 'ص' ? 'hard' : 'easy'} ${used ? 'used' : ''} ${cur ? 'current' : ''}`;
+    btn.textContent = q.num;
+    btn.title       = `${q.cat || ''} — ${q.diff === 'ص' ? 'صعب' : 'سهل'}`;
+    btn.id          = `gb-${q.num}`;
+    btn.disabled    = used;
+    if (!used) btn.onclick = () => loadMcq(q.num);
+    grid.appendChild(btn);
+  });
+}
+
+function refreshGridBtn(num) {
+  const btn = document.getElementById(`gb-${num}`);
+  if (!btn) return;
+  btn.className = btn.className.replace('current', '').trim();
+  if (S.usedMcq.has(num)) {
+    btn.className = 'g-btn used';
+    btn.disabled  = true;
+    btn.onclick   = null;
+  }
+}
+
+function loadManual() {
+  const v   = parseInt(document.getElementById('manual-input').value);
+  const inp = document.getElementById('manual-input');
+  if (!v) return;
+  const q = S.mcq.find(q => q.num === v);
+  if (!q) { notify(`السؤال ${v} غير موجود`, 'error'); return; }
+  inp.value = '';
+  loadMcq(q.num);
+}
+
+/* ════════════════════════════════════════════════════════
+   LIST QUESTIONS
+════════════════════════════════════════════════════════ */
+function buildList() {
+  const el = document.getElementById('list-scroll');
+  el.innerHTML = '';
+  S.list.forEach(q => {
+    const div   = document.createElement('div');
+    const used  = S.usedList.has(q.num);
+    const cur   = S.curQ?.num === q.num && S.curType === 'list';
+    div.className = `lq-card ${used ? 'used' : ''} ${cur ? 'active' : ''}`;
+    div.innerHTML = `
+      <div class="lq-num">سؤال ${q.num}${q.cat ? ' · ' + esc(q.cat) : ''}</div>
+      <div class="lq-text">${esc(q.q)}</div>
+    `;
+    if (!used) div.onclick = () => loadList(q.num);
+    el.appendChild(div);
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   LOADING QUESTIONS INTO CENTER
+════════════════════════════════════════════════════════ */
+function loadMcq(num) {
+  const q = S.mcq.find(q => q.num === num);
+  if (!q) return;
+  S.curQ       = q;
+  S.curType    = 'mcq';
+  S.phase      = 'mcq-init';
+  S.answerTeam = S.curTeam;
+  S.stealTeam  = null;
+  switchTab('mcq');
+  renderQuestion();
+  buildGrid();
+  renderCtrl();
+}
+
+function loadList(num) {
+  const q = S.list.find(q => q.num === num);
+  if (!q) return;
+  S.curQ       = q;
+  S.curType    = 'list';
+  S.phase      = 'list';
+  S.answerTeam = S.curTeam;
+  S.stealTeam  = null;
+  switchTab('list');
+  renderQuestion();
+  buildList();
+  renderCtrl();
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER QUESTION (center display)
+════════════════════════════════════════════════════════ */
+function renderQuestion() {
+  const q = S.curQ;
+  if (!q) {
+    document.getElementById('empty-state').classList.remove('hidden');
+    document.getElementById('q-content').classList.add('hidden');
+    return;
+  }
+
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('q-content').classList.remove('hidden');
+
+  // Meta badges
+  const meta = document.getElementById('q-meta');
+  if (S.curType === 'mcq') {
+    const isHard = q.diff === 'ص';
+    meta.innerHTML = `
+      <span class="badge badge-num">سؤال ${q.num}</span>
+      <span class="badge ${isHard ? 'badge-hard' : 'badge-easy'}">${isHard ? 'صعب' : 'سهل'}</span>
+      ${q.cat ? `<span class="badge badge-cat">${esc(q.cat)}</span>` : ''}
+    `;
+  } else {
+    meta.innerHTML = `
+      <span class="badge badge-num">سؤال ${q.num}</span>
+      <span class="badge badge-list">قائمة</span>
+      ${q.cat ? `<span class="badge badge-cat">${esc(q.cat)}</span>` : ''}
+    `;
+  }
+
+  // Question text
+  document.getElementById('q-text').textContent = q.q;
+
+  // Options grid
+  const og = document.getElementById('options-grid');
+  og.innerHTML = '';
+  og.classList.add('hidden');
+  if (S.curType === 'mcq') {
+    [['أ', q.optA], ['ب', q.optB], ['ج', q.optC], ['د', q.optD]].forEach(([letter, text], i) => {
+      const card = document.createElement('div');
+      card.className = 'opt-card';
+      card.id        = `opt-${i}`;
+      card.innerHTML = `<div class="opt-letter">${letter}</div><div>${esc(text)}</div>`;
+      og.appendChild(card);
+    });
+  }
+
+  // Hide answer reveal
+  const ar = document.getElementById('answer-reveal-box');
+  ar.classList.add('hidden');
+  ar.textContent = '';
+}
+
+/* ════════════════════════════════════════════════════════
+   CONTROL PANEL — rendered based on phase
+════════════════════════════════════════════════════════ */
+function renderCtrl() {
+  const el = document.getElementById('ctrl-inner');
+
+  if (!S.curQ) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:4px">لا يوجد سؤال محدد — اختر من الشبكة</div>';
+    return;
+  }
+
+  switch (S.phase) {
+    case 'mcq-init':     renderCtrlMcqInit(el);    break;
+    case 'mcq-no-opt':   renderCtrlAnswer(el);      break;
+    case 'mcq-with-opt': renderCtrlAnswer(el);      break;
+    case 'mcq-steal':    renderCtrlSteal(el);       break;
+    case 'list':         renderCtrlList(el);        break;
+    default:
+      el.innerHTML = '';
+  }
+}
+
+function teamPills(selectedIdx, cssClass = 'selected', onclick = 'selAnswerTeam') {
+  return S.teams.map((t, i) => {
+    const sel = i === selectedIdx;
+    return `<button class="team-pill ${sel ? cssClass : ''}"
+      style="${sel ? `border-color:${t.color};color:${t.color}` : ''}"
+      onclick="${onclick}(${i})">${esc(t.name)}</button>`;
+  }).join('');
+}
+
+function stealPills() {
+  return S.teams.map((t, i) => {
+    if (i === S.answerTeam) return ''; // can't steal from same team
+    const sel = i === S.stealTeam;
+    return `<button class="team-pill ${sel ? 'steal-sel' : ''}"
+      style="${sel ? `border-color:var(--accent);color:var(--accent)` : ''}"
+      onclick="selStealTeam(${i})">${esc(t.name)}</button>`;
+  }).join('');
+}
+
+function renderCtrlMcqInit(el) {
+  el.innerHTML = `
+    <div class="ctrl-row">
+      <button class="btn btn-warning btn-lg" onclick="chooseNoOpt()">
+        إجابة بدون خيارات &nbsp;<small style="opacity:.7">(${S.cfg.noOpt} نقطة)</small>
+      </button>
+      <button class="btn btn-blue btn-lg" onclick="chooseWithOpt()">
+        عرض الخيارات &nbsp;<small style="opacity:.7">(${S.cfg.withOpt} نقطة)</small>
+      </button>
+    </div>
+    <div class="ctrl-row">
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق السؤال</button>
+    </div>
+  `;
+}
+
+function renderCtrlAnswer(el) {
+  const pts  = S.phase === 'mcq-no-opt' ? S.cfg.noOpt : S.cfg.withOpt;
+  const isWithOpt = S.phase === 'mcq-with-opt';
+  el.innerHTML = `
+    <div class="ctrl-label">الفريق المجيب:</div>
+    <div class="ctrl-row"><div class="team-pills">${teamPills(S.answerTeam)}</div></div>
+    <div class="ctrl-row">
+      <button class="btn btn-success btn-lg" onclick="handleCorrect()">✓ صحيح &nbsp;(＋${pts})</button>
+      <button class="btn btn-danger btn-lg"  onclick="handleWrong()">✗ خطأ</button>
+      ${isWithOpt ? `<button class="btn btn-purple btn-sm" onclick="revealAns()">👁 كشف الإجابة</button>` : ''}
+    </div>
+    <div class="ctrl-row">
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
+    </div>
+  `;
+}
+
+function renderCtrlSteal(el) {
+  el.innerHTML = `
+    <div class="steal-banner">🔥 فرصة السرقة! (${S.cfg.steal} نقطة)</div>
+    <div class="ctrl-label">الفريق السارق:</div>
+    <div class="ctrl-row"><div class="team-pills">${stealPills()}</div></div>
+    <div class="ctrl-row">
+      <button class="btn btn-success btn-lg" onclick="handleStealOk()">✓ صحيح</button>
+      <button class="btn btn-danger btn-lg"  onclick="handleStealFail()">✗ خطأ</button>
+      <button class="btn btn-purple btn-sm"  onclick="revealAns()">👁 كشف الإجابة</button>
+    </div>
+    <div class="ctrl-row">
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
+    </div>
+  `;
+}
+
+function renderCtrlList(el) {
+  el.innerHTML = `
+    <div class="ctrl-label">الفريق الفائز بالقائمة:</div>
+    <div class="ctrl-row"><div class="team-pills">${teamPills(S.answerTeam)}</div></div>
+    <div class="ctrl-row" id="list-winner-row">
+      <span style="color:var(--muted);font-size:13px">النقاط:</span>
+      <input type="number" id="list-pts-input" value="${S.cfg.noOpt}" min="0" max="99"
+        style="width:65px;padding:7px;text-align:center;background:var(--bg-panel);
+               border:1px solid var(--border);border-radius:9px;color:var(--text);
+               font-size:18px;font-family:inherit">
+      <button class="btn btn-success btn-lg" onclick="handleListAward()">✓ منح النقاط</button>
+    </div>
+    <div class="ctrl-row">
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق السؤال</button>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════════
+   ANSWER FLOW HANDLERS
+════════════════════════════════════════════════════════ */
+function selAnswerTeam(i) { S.answerTeam = i; renderCtrl(); }
+function selStealTeam(i)  { S.stealTeam  = i; renderCtrl(); }
+
+function chooseNoOpt() {
+  S.phase       = 'mcq-no-opt';
+  S.answerTeam  = S.curTeam;
+  renderCtrl();
+}
+
+function chooseWithOpt() {
+  S.phase       = 'mcq-with-opt';
+  S.answerTeam  = S.curTeam;
+  document.getElementById('options-grid').classList.remove('hidden');
+  renderCtrl();
+}
+
+function handleCorrect() {
+  if (S.answerTeam === null) { notify('اختر الفريق المجيب أولاً', 'error'); return; }
+  const pts = S.phase === 'mcq-no-opt' ? S.cfg.noOpt : S.cfg.withOpt;
+  playCorrect();
+  award(S.answerTeam, pts);
+  if (S.phase === 'mcq-with-opt') revealAns();
+  markUsed('mcq');
+  setTimeout(closeQ, 1600);
+}
+
+function handleWrong() {
+  if (S.answerTeam === null) { notify('اختر الفريق المجيب أولاً', 'error'); return; }
+  playWrong();
+  notify('إجابة خاطئة! 🔴', 'error');
+  S.stealTeam = null;
+  S.phase     = 'mcq-steal';
+  renderCtrl();
+}
+
+function handleStealOk() {
+  if (S.stealTeam === null) { notify('اختر الفريق السارق أولاً', 'error'); return; }
+  playCorrect();
+  award(S.stealTeam, S.cfg.steal);
+  revealAns();
+  markUsed('mcq');
+  setTimeout(closeQ, 1600);
+}
+
+function handleStealFail() {
+  playWrong();
+  notify('خطأ! السؤال يُغلق. 🔴', 'error');
+  revealAns();
+  markUsed('mcq');
+  setTimeout(closeQ, 2000);
+}
+
+function handleListAward() {
+  if (S.answerTeam === null) { notify('اختر الفريق الفائز أولاً', 'error'); return; }
+  const pts = parseInt(document.getElementById('list-pts-input')?.value) || 0;
+  if (pts < 0) return;
+  playCorrect();
+  award(S.answerTeam, pts);
+  markUsed('list');
+  setTimeout(closeQ, 1600);
+}
+
+/* ─── Reveal answer ───────────────────────────────────── */
+function revealAns() {
+  const q = S.curQ;
+  if (!q || S.curType !== 'mcq') return;
+
+  // Make sure options are visible
+  document.getElementById('options-grid').classList.remove('hidden');
+
+  const map = { 'أ': 0, 'ب': 1, 'ج': 2, 'د': 3 };
+  const ci  = map[q.answer];
+  document.querySelectorAll('.opt-card').forEach((c, i) => {
+    c.classList.remove('correct', 'wrong');
+    if (i === ci) c.classList.add('correct');
+  });
+
+  const texts   = [q.optA, q.optB, q.optC, q.optD];
+  const arEl    = document.getElementById('answer-reveal-box');
+  arEl.textContent = `✓ الإجابة الصحيحة: ${q.answer} — ${texts[ci] || ''}`;
+  arEl.classList.remove('hidden');
+}
+
+/* ─── Close / mark used ──────────────────────────────── */
+function markUsed(type) {
+  if (!S.curQ) return;
+  if (type === 'mcq') {
+    S.usedMcq.add(S.curQ.num);
+    refreshGridBtn(S.curQ.num);
+  } else {
+    S.usedList.add(S.curQ.num);
+  }
+}
+
+function closeQ() {
+  const prevNum  = S.curQ?.num;
+  const prevType = S.curType;
+  S.curQ      = null;
+  S.curType   = null;
+  S.phase     = null;
+  S.answerTeam = null;
+  S.stealTeam  = null;
+
+  renderQuestion();
+  renderCtrl();
+  if (prevType === 'mcq') buildGrid();
+  if (prevType === 'list') buildList();
+}
+
+/* ════════════════════════════════════════════════════════
+   TIMER
+════════════════════════════════════════════════════════ */
+function renderTimer() {
+  const m   = Math.floor(S.timerVal / 60);
+  const sec = S.timerVal % 60;
+  const el  = document.getElementById('timer-display');
+  el.textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  el.classList.toggle('urgent', S.timerVal <= 10 && S.timerRunning);
+}
+
+function timerStart() {
+  if (S.timerRunning) return;
+  if (S.timerVal <= 0) S.timerVal = S.cfg.timerSec;
+  S.timerRunning = true;
+  S.timerTick = setInterval(() => {
+    S.timerVal--;
+    renderTimer();
+    if (S.timerVal <= 0) {
+      timerPause();
+      playWrong();
+      notify('⏰ انتهى الوقت!', 'error');
+    }
+  }, 1000);
+  renderTimer();
+}
+
+function timerPause() {
+  S.timerRunning = false;
+  clearInterval(S.timerTick);
+  S.timerTick = null;
+  document.getElementById('timer-display')?.classList.remove('urgent');
+  renderTimer();
+}
+
+function timerReset() {
+  timerPause();
+  S.timerVal = S.cfg.timerSec;
+  renderTimer();
+}
+
+function changeTimerDuration(val) {
+  timerPause();
+  S.cfg.timerSec = parseInt(val);
+  S.timerVal     = S.cfg.timerSec;
+  // Sync setup screen dropdown too
+  const cfgSel = document.getElementById('cfg-timer');
+  if (cfgSel) cfgSel.value = val;
+  renderTimer();
+}
+
+/* ════════════════════════════════════════════════════════
+   TABS
+════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.getElementById('tab-mcq-btn').classList.toggle('active', tab === 'mcq');
+  document.getElementById('tab-list-btn').classList.toggle('active', tab === 'list');
+  document.getElementById('tab-mcq').classList.toggle('active', tab === 'mcq');
+  document.getElementById('tab-list').classList.toggle('active', tab === 'list');
+}
+
+/* ════════════════════════════════════════════════════════
+   FULLSCREEN
+════════════════════════════════════════════════════════ */
+function toggleFS() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  } else {
+    document.exitFullscreen?.().catch(() => {});
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   NOTIFICATIONS
+════════════════════════════════════════════════════════ */
+let _nTimer = null;
+function notify(msg, type = 'info') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className   = `show n-${type}`;
+  clearTimeout(_nTimer);
+  _nTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ════════════════════════════════════════════════════════
+   UTILITY
+════════════════════════════════════════════════════════ */
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

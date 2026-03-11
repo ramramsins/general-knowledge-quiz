@@ -1,0 +1,23 @@
+[build]
+  publish = "."
+
+# Serve the xlsx file with the correct MIME type
+[[headers]]
+  for = "/*.xlsx"
+  [headers.values]
+    Content-Type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    Cache-Control = "public, max-age=3600"
+
+# Security headers for all pages
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options         = "SAMEORIGIN"
+    X-Content-Type-Options  = "nosniff"
+    Referrer-Policy         = "strict-origin-when-cross-origin"
+
+# Redirect root to index.html (already default, but explicit)
+[[redirects]]
+  from   = "/"
+  to     = "/index.html"
+  status = 200
