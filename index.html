@@ -1500,6 +1500,8 @@ function handleWrong() {
   notify('إجابة خاطئة! 🔴', 'error');
   S.stealTeam = null;
   S.phase     = 'mcq-steal';
+  // Always show options for the stealing team, even if original team answered without them
+  document.getElementById('options-grid').classList.remove('hidden');
   renderCtrl();
 }
 
