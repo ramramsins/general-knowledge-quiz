@@ -412,6 +412,31 @@ body {
 #notif.n-error        { border-color: var(--red);   color: var(--red); }
 #notif.n-info         { border-color: var(--gold);  color: var(--gold); }
 
+/* ─── CORRECT ANSWER BOX (always visible to host) ──────── */
+#correct-answer-bar {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(46,204,113,.13); border: 2px solid var(--green);
+  border-radius: 12px; padding: 10px 18px;
+  margin-bottom: 18px; animation: popIn .3s ease;
+}
+.ans-key-letter {
+  background: var(--green); color: #111;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900; flex-shrink: 0;
+}
+.ans-key-text {
+  font-size: 1.2rem; font-weight: 800; color: var(--green);
+}
+
+/* Current team banner inside ctrl panel */
+.cur-team-bar {
+  width: 100%; text-align: center; padding: 9px 14px;
+  border-radius: 10px; font-size: 1rem; font-weight: 800;
+  border: 2px solid; margin-bottom: 8px;
+  animation: fadeUp .2s ease;
+}
+
 /* ─── MISC ───────────────────────────────────────────── */
 .divider { height: 1px; background: var(--border); margin: 8px 0; }
 
@@ -700,6 +725,7 @@ select option { background: var(--bg-panel); }
         </div>
         <div id="q-content" class="hidden">
           <div class="q-meta" id="q-meta"></div>
+          <div id="correct-answer-bar" class="hidden"></div>
           <div id="q-text"></div>
           <div id="options-grid" class="hidden"></div>
           <div id="answer-reveal-box" class="hidden"></div>
@@ -1292,19 +1318,35 @@ function renderQuestion() {
   og.innerHTML = '';
   og.classList.add('hidden');
   if (S.curType === 'mcq') {
+    const ansMap = { 'أ': 0, 'ب': 1, 'ج': 2, 'د': 3 };
+    const correctIdx = ansMap[q.answer];
     [['أ', q.optA], ['ب', q.optB], ['ج', q.optC], ['د', q.optD]].forEach(([letter, text], i) => {
       const card = document.createElement('div');
-      card.className = 'opt-card';
+      // Highlight correct option immediately — host is the only viewer
+      card.className = 'opt-card' + (i === correctIdx ? ' correct' : '');
       card.id        = `opt-${i}`;
       card.innerHTML = `<div class="opt-letter">${letter}</div><div>${esc(text)}</div>`;
       og.appendChild(card);
     });
   }
 
-  // Hide answer reveal
+  // Show correct-answer bar immediately for MCQ
   const ar = document.getElementById('answer-reveal-box');
   ar.classList.add('hidden');
   ar.textContent = '';
+
+  const cab = document.getElementById('correct-answer-bar');
+  if (S.curType === 'mcq') {
+    const texts = [q.optA, q.optB, q.optC, q.optD];
+    const idx   = { 'أ': 0, 'ب': 1, 'ج': 2, 'د': 3 }[q.answer] ?? 0;
+    cab.innerHTML = `
+      <div class="ans-key-letter">${q.answer}</div>
+      <div class="ans-key-text">${esc(texts[idx] || '')}</div>
+    `;
+    cab.classList.remove('hidden');
+  } else {
+    cab.classList.add('hidden');
+  }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -1348,32 +1390,40 @@ function stealPills() {
   }).join('');
 }
 
+function curTeamBar() {
+  const t = S.teams[S.curTeam];
+  if (!t) return '';
+  return `<div class="cur-team-bar" style="border-color:${t.color};color:${t.color};background:${t.color}18">
+    دور: ${esc(t.name)}
+  </div>`;
+}
+
 function renderCtrlMcqInit(el) {
   el.innerHTML = `
+    ${curTeamBar()}
     <div class="ctrl-row">
       <button class="btn btn-warning btn-lg" onclick="chooseNoOpt()">
-        إجابة بدون خيارات &nbsp;<small style="opacity:.7">(${S.cfg.noOpt} نقطة)</small>
+        بدون خيارات &nbsp;<small style="opacity:.7">(${S.cfg.noOpt} نقطة)</small>
       </button>
       <button class="btn btn-blue btn-lg" onclick="chooseWithOpt()">
         عرض الخيارات &nbsp;<small style="opacity:.7">(${S.cfg.withOpt} نقطة)</small>
       </button>
     </div>
     <div class="ctrl-row">
-      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق السؤال</button>
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
     </div>
   `;
 }
 
 function renderCtrlAnswer(el) {
-  const pts  = S.phase === 'mcq-no-opt' ? S.cfg.noOpt : S.cfg.withOpt;
-  const isWithOpt = S.phase === 'mcq-with-opt';
+  const pts = S.phase === 'mcq-no-opt' ? S.cfg.noOpt : S.cfg.withOpt;
   el.innerHTML = `
-    <div class="ctrl-label">الفريق المجيب:</div>
+    ${curTeamBar()}
+    <div class="ctrl-label">تغيير الفريق المجيب:</div>
     <div class="ctrl-row"><div class="team-pills">${teamPills(S.answerTeam)}</div></div>
     <div class="ctrl-row">
       <button class="btn btn-success btn-lg" onclick="handleCorrect()">✓ صحيح &nbsp;(＋${pts})</button>
       <button class="btn btn-danger btn-lg"  onclick="handleWrong()">✗ خطأ</button>
-      ${isWithOpt ? `<button class="btn btn-purple btn-sm" onclick="revealAns()">👁 كشف الإجابة</button>` : ''}
     </div>
     <div class="ctrl-row">
       <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
@@ -1389,7 +1439,6 @@ function renderCtrlSteal(el) {
     <div class="ctrl-row">
       <button class="btn btn-success btn-lg" onclick="handleStealOk()">✓ صحيح</button>
       <button class="btn btn-danger btn-lg"  onclick="handleStealFail()">✗ خطأ</button>
-      <button class="btn btn-purple btn-sm"  onclick="revealAns()">👁 كشف الإجابة</button>
     </div>
     <div class="ctrl-row">
       <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
@@ -1399,7 +1448,8 @@ function renderCtrlSteal(el) {
 
 function renderCtrlList(el) {
   el.innerHTML = `
-    <div class="ctrl-label">الفريق الفائز بالقائمة:</div>
+    ${curTeamBar()}
+    <div class="ctrl-label">الفريق الفائز:</div>
     <div class="ctrl-row"><div class="team-pills">${teamPills(S.answerTeam)}</div></div>
     <div class="ctrl-row" id="list-winner-row">
       <span style="color:var(--muted);font-size:13px">النقاط:</span>
@@ -1410,7 +1460,7 @@ function renderCtrlList(el) {
       <button class="btn btn-success btn-lg" onclick="handleListAward()">✓ منح النقاط</button>
     </div>
     <div class="ctrl-row">
-      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق السؤال</button>
+      <button class="btn btn-dark btn-sm" onclick="closeQ()">✕ إغلاق</button>
     </div>
   `;
 }
@@ -1431,6 +1481,7 @@ function chooseWithOpt() {
   S.phase       = 'mcq-with-opt';
   S.answerTeam  = S.curTeam;
   document.getElementById('options-grid').classList.remove('hidden');
+  // Correct option is already highlighted from renderQuestion(), nothing extra needed
   renderCtrl();
 }
 
@@ -1439,9 +1490,8 @@ function handleCorrect() {
   const pts = S.phase === 'mcq-no-opt' ? S.cfg.noOpt : S.cfg.withOpt;
   playCorrect();
   award(S.answerTeam, pts);
-  if (S.phase === 'mcq-with-opt') revealAns();
   markUsed('mcq');
-  setTimeout(closeQ, 1600);
+  setTimeout(() => closeQ(true), 1600);
 }
 
 function handleWrong() {
@@ -1457,17 +1507,15 @@ function handleStealOk() {
   if (S.stealTeam === null) { notify('اختر الفريق السارق أولاً', 'error'); return; }
   playCorrect();
   award(S.stealTeam, S.cfg.steal);
-  revealAns();
   markUsed('mcq');
-  setTimeout(closeQ, 1600);
+  setTimeout(() => closeQ(true), 1600);
 }
 
 function handleStealFail() {
   playWrong();
   notify('خطأ! السؤال يُغلق. 🔴', 'error');
-  revealAns();
   markUsed('mcq');
-  setTimeout(closeQ, 2000);
+  setTimeout(() => closeQ(true), 2000);
 }
 
 function handleListAward() {
@@ -1477,7 +1525,7 @@ function handleListAward() {
   playCorrect();
   award(S.answerTeam, pts);
   markUsed('list');
-  setTimeout(closeQ, 1600);
+  setTimeout(() => closeQ(true), 1600);
 }
 
 /* ─── Reveal answer ───────────────────────────────────── */
@@ -1512,7 +1560,7 @@ function markUsed(type) {
   }
 }
 
-function closeQ() {
+function closeQ(advanceTeam = false) {
   const prevType = S.curType;
   S.curQ       = null;
   S.curType    = null;
@@ -1520,11 +1568,12 @@ function closeQ() {
   S.answerTeam = null;
   S.stealTeam  = null;
 
+  if (advanceTeam) nextTeam();   // auto-rotate to next team after resolved question
+
   renderQuestion();
   renderCtrl();
   if (prevType === 'mcq') buildGrid();
   if (prevType === 'list') buildList();
-  // Return host to grid tab on mobile after closing
   switchMobileTab('grid');
   setQBadge(false);
 }
